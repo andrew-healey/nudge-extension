@@ -170,6 +170,12 @@ const getTimeDelay =
     return Math.floor(Math.random() * 30_000) + 10_000;
 }
 
+const closeWindow = () => {
+    window.close();
+    // in case that didn't work, ask the background script to close us
+    chrome.runtime.sendMessage({ closeWindow: true });
+};
+
 const getSatisfactionLevel = () => {
     console.log("getSatisfactionLevel", window.location.hostname)
     if (whitelist.includes(window.location.hostname)) {
@@ -245,6 +251,7 @@ const getSatisfactionLevel = () => {
                 if (countdown <= 0) {
                     clearInterval(countdownInterval);
                     closeModal();
+                    shouldGuaranteeClicks = false;
                     mediaElements.forEach(media => {
                         media.play();
                     });
@@ -268,3 +275,13 @@ const getSatisfactionLevel = () => {
 }
 
 waitForBody().then(getSatisfactionLevel);
+
+// Guarantees that we can type in the input box
+// Websites with paywalls/intrusive modals can sometimes prevent inputs from being typed in - this fixes that
+let shouldGuaranteeClicks = true;
+document.addEventListener("focus",(event)=>{
+    const temp1=document.querySelector(".custom-modal-content input")
+    if(shouldGuaranteeClicks && event.target===temp1) {
+        event.stopImmediatePropagation();
+    }
+},1);
