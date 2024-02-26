@@ -1,4 +1,9 @@
-const sites = ["www.youtube.com", "news.ycombinator.com", "twitter.com"];
+const sites = [
+  "www.youtube.com",
+  "news.ycombinator.com",
+  "twitter.com",
+  "discord.com"
+];
 const satisfactionQuestions = [
   "What % of your screen time today has been rewarding/gotten you closer to your goals?",
   "Is this page actively bringing you joy, or are you just shutting your brain off?",
@@ -171,6 +176,7 @@ const makeModal = () => {
   let closeModal = () => {
     modal.style.display = "none";
     modal.parentNode.removeChild(modal);
+    setTimeout(getSatisfactionLevel,5*60_000);
   };
 
   document.body.appendChild(modal);
@@ -341,3 +347,4 @@ document.addEventListener(
 );
 
 waitForBody().then(getSatisfactionLevel);
+
