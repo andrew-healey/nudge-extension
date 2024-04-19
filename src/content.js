@@ -2,7 +2,13 @@ const sites = [
   "www.youtube.com",
   "news.ycombinator.com",
   "twitter.com",
-  "discord.com"
+  "discord.com",
+  "linkedin.com",
+  "www.linkedin.com",
+  "manifold.markets",
+  "polymarket.com",
+  "*.substack.com",
+  "app.slack.com",
 ];
 const satisfactionQuestions = [
   "What % of your screen time today has been rewarding/gotten you closer to your goals?",
@@ -12,8 +18,8 @@ const satisfactionQuestions = [
 
 // Returns a random time delay between 10 and 40 seconds
 // Change this to whatever you want
-const minWaitingTime = 10_000;
-const maxWaitingTime = 30_000;
+const minWaitingTime = 1_000;
+const maxWaitingTime = 3_000;
 
 // content script, to run in the context of the page
 // every time we open a new tab in these domains, we'll give the user a full screen prompt.
@@ -28,14 +34,17 @@ const getTimeDelay = () => {
 // wait until document.body is available, then resolve
 function waitForBody() {
   return new Promise((resolve) => {
-    function checkBody() {
-      if (document.body) {
-        resolve();
-      } else {
-        setTimeout(checkBody, 10);
-      }
+    if (document.body) {
+      resolve();
+    } else {
+      const observer = new MutationObserver((mutations, obs) => {
+        if (document.body) {
+          resolve();
+          obs.disconnect(); // Stop observing once the body is available
+        }
+      });
+      observer.observe(document.documentElement, { childList: true });
     }
-    checkBody();
   });
 }
 
@@ -176,7 +185,9 @@ const makeModal = () => {
   let closeModal = () => {
     modal.style.display = "none";
     modal.parentNode.removeChild(modal);
-    setTimeout(getSatisfactionLevel,5*60_000);
+    setTimeout(getSatisfactionLevel, 5 * 1_000);
+    modalIsShown = false;
+    restoreTitleUpdates(); // Restore title updates when modal is closed
   };
 
   document.body.appendChild(modal);
@@ -207,9 +218,17 @@ const unPauseAllMedia = () => {
   });
 };
 
+let modalIsShown = false;
 // ask the user how happy they are with their productivity
 const getSatisfactionLevel = () => {
-  if (sites.includes(window.location.hostname)) {
+  modalIsShown = true;
+  if (
+    sites.some((site) =>
+      new RegExp(`^${site.replace(/\*/g, ".*")}$`).test(
+        window.location.hostname
+      )
+    )
+  ) {
     pauseAllMedia();
     let { modal, closeModal } = makeModal();
 
@@ -291,9 +310,11 @@ const getSatisfactionLevel = () => {
           clearInterval(countdownInterval);
           closeModal();
           shouldGuaranteeClicks = false;
+          let mediaElements = document.querySelectorAll("video, audio");
           mediaElements.forEach((media) => {
             media.play();
           });
+          setFaviconValue(hiddenUpToDateFaviconValue);
         }
       }, 1000);
 
@@ -328,7 +349,119 @@ const getSatisfactionLevel = () => {
       progressContainer.appendChild(closeButton);
     });
   }
+
+  // setTimeout(()=>{
+  showBlackFavicon();
+  blockTitleUpdates(`${window.location.hostname} is distracting`); // Block title updates and set a custom title
+  // },10_000)
 };
+
+let hiddenUpToDateFaviconValue = null; // use the default website favicon
+let hiddenUpToDateTitleValue = null; // Store the original title
+
+// black favicon
+const blackFavicon =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBQJ6AOXWAAA=";
+const setFaviconValue = async (newValue = blackFavicon) => {
+  const possibleExistingFavicon = document.querySelector('link[rel*="icon"]');
+  if (possibleExistingFavicon) {
+    if (possibleExistingFavicon.href !== newValue) {
+      hiddenUpToDateFaviconValue = possibleExistingFavicon.href;
+      console.log("new hiddenUpToDateFaviconValue", hiddenUpToDateFaviconValue);
+      if (hiddenUpToDateFaviconValue === blackFavicon) {
+        console.warn("NONONO ITS BLACK FAVCON");
+      }
+      // await new Promise(res=>setTimeout(res,500));
+      possibleExistingFavicon.href = newValue;
+    }
+  } else {
+    hiddenUpToDateFaviconValue = null;
+    if (newValue) {
+      const favicon = document.createElement("link");
+      favicon.rel = "icon";
+      favicon.href = newValue;
+      document.head.appendChild(favicon);
+    }
+    // if newValue is null, don't let there be any favicon
+    else {
+      const favicon = document.querySelector('link[rel="icon"]');
+      if (favicon) document.head.removeChild(favicon);
+    }
+  }
+};
+
+const showBlackFavicon = () => {
+  setFaviconValue(blackFavicon);
+};
+const showHiddenFavicon = () => {
+  setFaviconValue(hiddenUpToDateFaviconValue);
+};
+
+// Function to block title updates and set a custom title
+function blockTitleUpdates(customTitle = "Attention Required!") {
+  console.warn("BLOCKING TITLE UPDATEWS");
+  hiddenUpToDateTitleValue = document.title; // Save the current title
+  document.title = customTitle;
+
+  const observer = new MutationObserver((mutations) => {
+    if (document.title === customTitle) return;
+    console.warn("MUTAIOTNSSSS", mutations);
+    if (!modalIsShown) {
+      return;
+    }
+    mutations.forEach((mutation) => {
+      if (
+        mutation.type === "childList" &&
+        mutation.addedNodes.length > 0 &&
+        mutation.target.nodeName === "TITLE" &&
+        mutation.target.textContent !== customTitle
+      ) {
+        hiddenUpToDateTitleValue = mutation.target.textContent;
+        document.title = customTitle; // Set the custom title when a new <title> element is added
+      }
+    });
+  });
+  observer.observe(document.head, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    characterDataOldValue: true,
+  });
+}
+
+// Function to restore the ability to update the document's title normally
+function restoreTitleUpdates() {
+  delete document.title; // Remove the custom setter and getter
+  document.title = hiddenUpToDateTitleValue; // Restore the original title
+}
+
+// block favicon changes, use a solid black favicon when modal is not shown
+// Function to block favicon updates
+async function blockFaviconUpdates() {
+  const observer = new MutationObserver(async (mutations) => {
+    mutations.forEach((mutation) => {
+      if (modalIsShown) {
+        showBlackFavicon();
+      }
+    });
+  });
+
+  setInterval(() => {
+    if (modalIsShown) {
+      showBlackFavicon();
+    }
+  }, 500);
+
+  // Start observing the document head for changes
+  observer.observe(document.head, {
+    childList: true, // Observe the addition of new elements
+    attributes: true, // Observe changes to attributes
+    attributeFilter: ["href"], // Only observe changes to the href attribute
+    subtree: true, // Observe changes in descendants too
+    attributeOldValue: true, // Pass the old value of the attribute to the callback
+  });
+  setFaviconValue(blackFavicon);
+}
 
 // Guarantees that we can type in the input box
 // Websites with paywalls/intrusive modals can sometimes prevent inputs from being typed in - this fixes that
@@ -346,5 +479,6 @@ document.addEventListener(
   1
 );
 
-waitForBody().then(getSatisfactionLevel);
+window.setFaviconValue = setFaviconValue;
 
+waitForBody().then(getSatisfactionLevel).then(blockFaviconUpdates);
