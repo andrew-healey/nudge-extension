@@ -18,8 +18,8 @@ const satisfactionQuestions = [
 
 // Returns a random time delay between 10 and 40 seconds
 // Change this to whatever you want
-const minWaitingTime = 1_000;
-const maxWaitingTime = 3_000;
+const minWaitingTime = 10_000;
+const maxWaitingTime = 30_000;
 
 // content script, to run in the context of the page
 // every time we open a new tab in these domains, we'll give the user a full screen prompt.
@@ -185,7 +185,7 @@ const makeModal = () => {
   let closeModal = () => {
     modal.style.display = "none";
     modal.parentNode.removeChild(modal);
-    setTimeout(getSatisfactionLevel, 5 * 1_000);
+    setTimeout(getSatisfactionLevel, 5 * 60_000);
     modalIsShown = false;
     restoreTitleUpdates(); // Restore title updates when modal is closed
   };
