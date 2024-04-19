@@ -348,12 +348,10 @@ const getSatisfactionLevel = () => {
       // Append the close button to the modal
       progressContainer.appendChild(closeButton);
     });
-  }
 
-  // setTimeout(()=>{
-  showBlackFavicon();
-  blockTitleUpdates(`${window.location.hostname} is distracting`); // Block title updates and set a custom title
-  // },10_000)
+    showBlackFavicon(); // block favicon updates and show a black/gray favicon
+    blockTitleUpdates(`${window.location.hostname} is distracting`); // Block title updates and set a custom title
+  }
 };
 
 let hiddenUpToDateFaviconValue = null; // use the default website favicon
@@ -367,9 +365,10 @@ const setFaviconValue = async (newValue = blackFavicon) => {
   if (possibleExistingFavicon) {
     if (possibleExistingFavicon.href !== newValue) {
       hiddenUpToDateFaviconValue = possibleExistingFavicon.href;
-      console.log("new hiddenUpToDateFaviconValue", hiddenUpToDateFaviconValue);
+      // console.log("new hiddenUpToDateFaviconValue", hiddenUpToDateFaviconValue);
       if (hiddenUpToDateFaviconValue === blackFavicon) {
-        console.warn("NONONO ITS BLACK FAVCON");
+        // console.warn("NONONO ITS BLACK FAVCON");
+        return;
       }
       // await new Promise(res=>setTimeout(res,500));
       possibleExistingFavicon.href = newValue;
@@ -399,13 +398,13 @@ const showHiddenFavicon = () => {
 
 // Function to block title updates and set a custom title
 function blockTitleUpdates(customTitle = "Attention Required!") {
-  console.warn("BLOCKING TITLE UPDATEWS");
+  // console.warn("BLOCKING TITLE UPDATEWS");
   hiddenUpToDateTitleValue = document.title; // Save the current title
   document.title = customTitle;
 
   const observer = new MutationObserver((mutations) => {
     if (document.title === customTitle) return;
-    console.warn("MUTAIOTNSSSS", mutations);
+    // console.warn("MUTAIOTNSSSS", mutations);
     if (!modalIsShown) {
       return;
     }
@@ -481,4 +480,4 @@ document.addEventListener(
 
 window.setFaviconValue = setFaviconValue;
 
-waitForBody().then(getSatisfactionLevel).then(blockFaviconUpdates);
+waitForBody().then(getSatisfactionLevel)
