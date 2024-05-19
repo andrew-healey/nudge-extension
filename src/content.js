@@ -2,6 +2,7 @@ const sites = [
   "www.youtube.com",
   "news.ycombinator.com",
   "twitter.com",
+  "x.com",
   "discord.com",
   "linkedin.com",
   "www.linkedin.com",
